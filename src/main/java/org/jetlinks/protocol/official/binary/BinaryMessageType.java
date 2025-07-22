@@ -18,7 +18,7 @@ import java.util.function.Supplier;
 
 public enum BinaryMessageType {
     //0x00
-    keepalive(null, null),
+    keepalive(KeepaliveMessage.class, BinaryKeepaliveMessage::new),
 
     //0x01
     online(DeviceOnlineMessage.class, BinaryDeviceOnlineMessage::new),

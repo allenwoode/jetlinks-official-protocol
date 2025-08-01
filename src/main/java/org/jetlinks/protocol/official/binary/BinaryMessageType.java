@@ -9,7 +9,6 @@ import org.jetlinks.core.message.event.EventMessage;
 import org.jetlinks.core.message.function.FunctionInvokeMessage;
 import org.jetlinks.core.message.function.FunctionInvokeMessageReply;
 import org.jetlinks.core.message.property.*;
-import org.jetlinks.core.message.state.DeviceStateCheckMessage;
 
 import java.time.Duration;
 import java.util.Map;
@@ -18,7 +17,7 @@ import java.util.function.Supplier;
 
 public enum BinaryMessageType {
     //0x00
-    keepalive(KeepaliveMessage.class, BinaryKeepaliveMessage::new),
+    keepalive(DeviceKeepaliveMessage.class, BinaryDeviceKeepaliveMessage::new),
 
     //0x01
     online(DeviceOnlineMessage.class, BinaryDeviceOnlineMessage::new),
@@ -146,22 +145,22 @@ public enum BinaryMessageType {
                              String deviceIdMaybe,
                              BiFunction<DeviceMessage, Integer, T> handler) {
         //第0个字节是消息类型
-        BinaryMessageType type = VALUES[data.readByte()];
+        BinaryMessageType type = VALUES[data.readByte()]; //消息类型 1byte
         if (type.forTcp == null) {
             return null;
         }
         // 1-8字节 时间戳
-        long timestamp = data.readLong();
+        long timestamp = data.readLong(); //系统时间戳 8bytes
         // 9-11字节 消息序号
-        int msgId = data.readUnsignedShort();
+        int msgId = data.readUnsignedShort(); //消息id 1byte
         // 12... 字节 设备ID
-        String deviceId = (String) DataType.STRING.read(data);
+        String deviceId = (String) DataType.STRING.read(data); //设备id 根据前置2byte获取字节length
         if (deviceId == null) {
             deviceId = deviceIdMaybe;
         }
 
         // 创建消息对象
-        BinaryMessage<DeviceMessage> tcp = type.forTcp.get();
+        BinaryMessage<DeviceMessage> tcp = type.forTcp.get(); //二进制消息类型格式
 
         //从ByteBuf读取
         tcp.read(data);

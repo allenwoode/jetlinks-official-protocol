@@ -137,18 +137,45 @@ src/main/java/org/jetlinks/protocol/official/
 
 ### Binary Protocol Message Types
 
+See `binary-protocol.md` for detailed encoding rules and examples.
+
 - `0x00`: Keepalive
-- `0x01`: Online (device connection)
-- `0x02`: ACK (acknowledgment)
-- `0x03`: Report property
-- `0x04`: Read property
-- `0x05`: Read property reply
-- `0x06`: Write property
-- `0x07`: Write property reply
-- `0x08`: Function invoke
-- `0x09`: Function invoke reply
+- `0x01`: Online (device connection) - includes secure key
+- `0x02`: ACK (acknowledgment) - response codes: 0x00=OK, 0x01=Unauthenticated, 0x02=Unsupported
+- `0x03`: Report property - OBJECT type data
+- `0x04`: Read property - ARRAY type property list
+- `0x05`: Read property reply - success: [0x01, OBJECT] or failure: [0x00, error_code, error_message]
+- `0x06`: Write property - OBJECT type property data
+- `0x07`: Write property reply - success: [0x01, OBJECT] or failure: [0x00, error_code, error_message]
+- `0x08`: Function invoke - [function_id:STRING, parameters:OBJECT]
+- `0x09`: Function invoke reply - success: [0x01, result:OBJECT] or failure: [0x00, error_code, error_message]
+
+### Data Type Encoding
+
+All data uses big-endian encoding with type-length-value format:
+
+- STRING: type(0x0b) + length(2 bytes) + UTF-8 data
+- OBJECT: type(0x0e) + field_count(2 bytes) + key-value pairs
+- ARRAY: type(0x0d) + element_count(2 bytes) + typed elements
 
 ### Testing
 
 The project includes comprehensive test coverage for all transport protocols and message types. Tests use JUnit 4 with
 Reactor Test support.
+
+## Development Workflow
+
+### Recent Changes (Current Git Status)
+
+- Modified `pom.xml` - project dependencies and build configuration
+- Added/Modified `BinaryDeviceKeepaliveMessage.java` - new keepalive message implementation
+- Modified `BinaryKeepaliveMessage.java`, `BinaryMessageType.java`, `KeepaliveMessage.java` - keepalive protocol updates
+- Added/Modified `DeviceKeepalive.java` - TCP device keepalive support
+- Modified `TcpDevice.java` - TCP device implementation updates
+- Updated `BinaryMessageTypeTest.java` - test coverage for binary message types
+
+### Key Files for Protocol Extension
+
+- `BinaryMessageType.java` - Central enum for all binary message types, modify here to add new message types
+- `JetLinksProtocolSupportProvider.java` - Main protocol registration, update for new transport support
+- Transport-specific codecs in respective packages (tcp/, udp/, http/, etc.) for implementing new transports

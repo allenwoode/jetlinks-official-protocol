@@ -3,8 +3,6 @@ package org.jetlinks.protocol.official.binary;
 import io.netty.buffer.ByteBuf;
 import org.jetlinks.core.message.DeviceMessageReply;
 
-import java.util.Map;
-
 public abstract class BinaryReplyMessage<T extends DeviceMessageReply> implements BinaryMessage<T> {
 
     private T message;
@@ -14,14 +12,18 @@ public abstract class BinaryReplyMessage<T extends DeviceMessageReply> implement
     @Override
     public final void read(ByteBuf buf) {
         message = newMessage();
-        boolean success = buf.readBoolean();
-        if (success) {
-            doReadSuccess(message, buf);
-        } else {
-            message.success(false);
-            message.code(String.valueOf(DataType.readFrom(buf)));
-            message.message(String.valueOf(DataType.readFrom(buf)));
-        }
+//        boolean success = buf.readBoolean();
+//        if (success) {
+//            doReadSuccess(message, buf);
+//        } else {
+//            message.success(false);
+//            message.code(String.valueOf(DataType.readFrom(buf)));
+//            message.message(String.valueOf(DataType.readFrom(buf)));
+//        }
+        doReadSuccess(message, buf);
+        message.success(buf.readBoolean());
+        message.code(String.valueOf(DataType.readFrom(buf)));
+        message.message(String.valueOf(DataType.readFrom(buf)));
     }
 
     protected abstract void doReadSuccess(T msg, ByteBuf buf);
@@ -30,14 +32,16 @@ public abstract class BinaryReplyMessage<T extends DeviceMessageReply> implement
 
     @Override
     public final void write(ByteBuf buf) {
+//        if (message.isSuccess()) {
+//            doWriteSuccess(message, buf);
+//        } else {
+//            DataType.writeTo(message.getCode(), buf);
+//            DataType.writeTo(message.getMessage(), buf);
+//        }
+        doWriteSuccess(message, buf);
         buf.writeBoolean(message.isSuccess());
-
-        if (message.isSuccess()) {
-            doWriteSuccess(message, buf);
-        } else {
-            DataType.writeTo(message.getCode(), buf);
-            DataType.writeTo(message.getMessage(), buf);
-        }
+        DataType.writeTo(message.getCode(), buf);
+        DataType.writeTo(message.getMessage(), buf);
     }
 
     @Override

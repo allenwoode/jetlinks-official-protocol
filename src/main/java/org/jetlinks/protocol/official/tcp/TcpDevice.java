@@ -1,6 +1,5 @@
 package org.jetlinks.protocol.official.tcp;
 
-import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
 import io.vertx.core.Vertx;
 import io.vertx.core.buffer.Buffer;
@@ -18,9 +17,9 @@ import org.jetlinks.protocol.official.binary.BinaryMessageType;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
+import java.time.Duration;
 import java.util.Collections;
 import java.util.concurrent.ThreadLocalRandom;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 
 public class TcpDevice {
@@ -28,7 +27,7 @@ public class TcpDevice {
     public static void main(String[] args) {
         Vertx vertx = Vertx.vertx();
         int start = args.length > 0 ? Integer.parseInt(args[0]) : 1;
-        int count = args.length > 1 ? Integer.parseInt(args[1]) : 8000;
+        int count = args.length > 1 ? Integer.parseInt(args[1]) : 1000;
         String[] hosts = args.length > 2 ? args[2].split(",") : new String[]{"0.0.0.0"};
 
         Flux.range(start, count)
@@ -52,6 +51,7 @@ public class TcpDevice {
                                                             parser.fixedSizeMode(buf.getInt(0));
                                                             return b;
                                                         }
+
                                                         parser.fixedSizeMode(4);
 
                                                         sink.success("tcp-off-" + i + ":" + socket.localAddress());
@@ -66,9 +66,10 @@ public class TcpDevice {
                                                         return null;
                                                     });
                                                 });
+
                                                 socket
                                                         .closeHandler((s) -> {
-                                                            System.out.println("tcp-off-" + i + ":" + socket.localAddress() + "closed");
+                                                            System.out.println("tcp-off-" + i + ":" + socket.localAddress() + " closed");
                                                             sink.success();
                                                         })
                                                         .exceptionHandler(er -> {
@@ -78,15 +79,15 @@ public class TcpDevice {
                                                         .handler(parser);
 
                                                 DeviceOnlineMessage message = new DeviceOnlineMessage();
-                                                message.addHeader(BinaryDeviceOnlineMessage.loginToken, "test");
-                                                message.setDeviceId("tcp-off-" + i);
+                                                message.addHeader(BinaryDeviceOnlineMessage.loginToken, "admin");
+                                                message.setDeviceId("1946042226889179136");
 
                                                 socket.write(Buffer.buffer(TcpDeviceMessageCodec.wrapByteByf(BinaryMessageType.write(message, Unpooled.buffer()))));
-
                                             });
                                 }),
-                        1024
+                        1
                 )
+                .delayElements(Duration.ofSeconds(10))
                 .count()
                 .subscribe(System.out::println);
 
@@ -104,7 +105,7 @@ public class TcpDevice {
             reply = ((ReadPropertyMessage) downstream)
                     .newReply()
                     .success(Collections.singletonMap(
-                            "temp0",
+                            "temp",
                             ThreadLocalRandom
                                     .current()
                                     .nextFloat() * 100

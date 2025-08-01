@@ -32,6 +32,12 @@ public class TcpDeviceMessageCodec implements DeviceMessageCodec {
         return DefaultTransport.TCP;
     }
 
+    /**
+     * 协议对消息上下文进行解码
+     *
+     * @param context 消息上下文
+     * @return
+     */
     @NonNull
     @Override
     public Publisher<? extends Message> decode(@NonNull MessageDecodeContext context) {
@@ -118,6 +124,11 @@ public class TcpDeviceMessageCodec implements DeviceMessageCodec {
                 }));
     }
 
+    /**
+     * 协议对消息上下文进行编码
+     * @param context 消息上下文
+     * @return
+     */
     @NonNull
     @Override
     public Publisher<? extends EncodedMessage> encode(@NonNull MessageEncodeContext context) {

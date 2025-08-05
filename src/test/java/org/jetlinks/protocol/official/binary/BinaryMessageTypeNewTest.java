@@ -8,7 +8,7 @@ import org.jetlinks.core.message.AcknowledgeDeviceMessage;
 import org.jetlinks.core.message.DeviceKeepaliveMessage;
 import org.jetlinks.core.message.DeviceMessage;
 import org.jetlinks.core.message.event.EventMessage;
-import org.jetlinks.core.message.function.FunctionInvokeMessageReply;
+import org.jetlinks.core.message.function.FunctionInvokeMessage;
 import org.jetlinks.core.message.property.*;
 import org.junit.Assert;
 import org.junit.Test;
@@ -23,13 +23,26 @@ public class BinaryMessageTypeNewTest {
 
     @Test
     public void testAck() {
+        AckCode code = AckCode.unsupportedMessage;
         AcknowledgeDeviceMessage message = new AcknowledgeDeviceMessage();
         message.setDeviceId(deviceId);
-        message.setMessageId("10000");
-        message.setMessage("设备未认证");
-        message.setCode("failed");
-        message.setSuccess(false);
-        doTest(message);
+        message.addHeader(BinaryAcknowledgeDeviceMessage.codeHeader, code.name());
+        message.setMessageId("15");
+        message.setCode(code.name());
+        //doTest(message);
+
+        ByteBuf data = BinaryMessageType.write(message, Unpooled.buffer());
+        data.writeBytes("\r\n".getBytes());
+
+        ByteBuf buf = Unpooled.buffer()
+                .writeInt(0)
+                .writeBytes(data);
+        System.out.println(ByteBufUtil.prettyHexDump(buf));
+        System.out.println(ByteBufUtil.hexDump(buf));
+
+        buf.readInt();
+        DeviceMessage read = BinaryMessageType.read(buf);
+        System.out.println(read);
     }
 
     @Test
@@ -46,7 +59,7 @@ public class BinaryMessageTypeNewTest {
         ByteBuf data = Unpooled
                 .buffer()
                 .writeByte(0x01) // 消息类型 online: 0x01
-                .writeLong(System.currentTimeMillis()) // 时间戳
+                .writeLong(0) // 时间戳
                 .writeShort(1) // 消息id
                 .writeShort(deviceId.getBytes().length) // 设备id长度
                 .writeBytes(deviceId.getBytes())        // 设备id
@@ -61,6 +74,34 @@ public class BinaryMessageTypeNewTest {
 
         System.out.println(ByteBufUtil.prettyHexDump(buf));
         System.out.println(ByteBufUtil.hexDump(buf));
+
+        buf.readInt();
+        DeviceMessage read = BinaryMessageType.read(buf);
+        System.out.println(read);
+    }
+
+    @Test
+    public void testKeepaliveBuild() {
+        ByteBuf data = Unpooled
+                .buffer()
+                .writeByte(0x00) // 消息类型 online: 0x01
+                .writeLong(System.currentTimeMillis()) // 时间戳
+                .writeShort(1) // 消息id
+                .writeShort(deviceId.getBytes().length) // 设备id长度
+                .writeBytes(deviceId.getBytes())        // 设备id
+                .writeBytes("\r\n".getBytes());          // 拆粘包分隔符
+
+        //wrapper(data);
+        ByteBuf buf = Unpooled.buffer()
+                .writeInt(data.readableBytes()) // 消息长度
+                .writeBytes(data);              // 消息内容
+
+        System.out.println(ByteBufUtil.prettyHexDump(buf));
+        System.out.println(ByteBufUtil.hexDump(buf));
+
+        buf.readInt();
+        DeviceMessage read = BinaryMessageType.read(buf);
+        System.out.println(read);
     }
 
     @Test
@@ -95,7 +136,7 @@ public class BinaryMessageTypeNewTest {
         ByteBuf data = Unpooled
                 .buffer()
                 .writeByte(0x03) // 消息类型 REPORT_PROPERTY: 0x03
-                .writeLong(System.currentTimeMillis()) // 时间戳
+                .writeLong(0) // 时间戳
                 .writeShort(1) // 消息id
                 .writeShort(deviceId.getBytes().length) // 设备id长度
                 .writeBytes(deviceId.getBytes())        // 设备id
@@ -118,7 +159,7 @@ public class BinaryMessageTypeNewTest {
                 .writeBytes("\r\n".getBytes());          // 拆粘包分隔符
 
         ByteBuf buf = Unpooled.buffer()
-                .writeInt(data.readableBytes()) // 消息长度
+                .writeInt(0) // 消息长度
                 .writeBytes(data);              // 消息内容
 
         System.out.println(ByteBufUtil.prettyHexDump(buf));
@@ -139,6 +180,47 @@ public class BinaryMessageTypeNewTest {
         message.setProperties(properties);
 
         doTest(message);
+    }
+
+    @Test
+    public void testReportBuild2() {
+        String propertyKey = "LOCK_STATE";
+        String numKey = "num";
+        int numValue = 6;
+        String stateKey = "state";
+        String stateValue = "110011";
+
+        ByteBuf data = Unpooled
+                .buffer()
+                .writeByte(0x03) // 消息类型 REPORT_PROPERTY: 0x03
+                .writeLong(0) // 时间戳
+                .writeShort(1) // 消息id
+                .writeShort(deviceId.getBytes().length) // 设备id长度
+                .writeBytes(deviceId.getBytes())        // 设备id
+                .writeShort(1) // 属性对象数量
+                .writeShort(propertyKey.getBytes().length) // 属性key长度
+                .writeBytes(propertyKey.getBytes())     // 属性key "CHARGE_STATE"
+                .writeByte(0x0E) // value类型 OBJECT: 0x0E
+                .writeShort(2) // OBJECT中字段数量
+                // 第一个字段 "num": 6
+                .writeShort(numKey.getBytes().length)   // 字段key长度
+                .writeBytes(numKey.getBytes())          // 字段key "num"
+                .writeByte(0x04) // value类型 INT: 0x04
+                .writeInt(numValue) // int值 6
+                // 第二个字段 "state": "001100"
+                .writeShort(stateKey.getBytes().length) // 字段key长度
+                .writeBytes(stateKey.getBytes())        // 字段key "state"
+                .writeByte(0x0B) // value类型 STRING: 0x0B
+                .writeShort(stateValue.getBytes().length) // 字符串长度
+                .writeBytes(stateValue.getBytes())      // 字符串值 "001100"
+                .writeBytes("\r\n".getBytes());          // 拆粘包分隔符
+
+        ByteBuf buf = Unpooled.buffer()
+                .writeInt(0) // 消息长度
+                .writeBytes(data);              // 消息内容
+
+        System.out.println(ByteBufUtil.prettyHexDump(buf));
+        System.out.println(ByteBufUtil.hexDump(buf));
     }
 
     @Test
@@ -193,7 +275,7 @@ public class BinaryMessageTypeNewTest {
         ByteBuf data = Unpooled
                 .buffer()
                 .writeByte(0x0A) // 消息类型 EVENT: 0x0A
-                .writeLong(System.currentTimeMillis()) // 时间戳
+                .writeLong(0) // 时间戳
                 .writeShort(1) // 消息id
                 .writeShort(deviceId.getBytes().length) // 设备id长度
                 .writeBytes(deviceId.getBytes())        // 设备id
@@ -214,11 +296,15 @@ public class BinaryMessageTypeNewTest {
                 .writeBytes("\r\n".getBytes());        // 拆粘包分隔符
 
         ByteBuf buf = Unpooled.buffer()
-                .writeInt(data.readableBytes()) // 消息长度
+                .writeInt(0) // 消息长度
                 .writeBytes(data);              // 消息内容
 
         System.out.println(ByteBufUtil.prettyHexDump(buf));
         System.out.println(ByteBufUtil.hexDump(buf));
+
+        buf.readInt();
+        DeviceMessage read = BinaryMessageType.read(buf);
+        System.out.println(read);
     }
 
     @Test
@@ -259,25 +345,25 @@ public class BinaryMessageTypeNewTest {
     @Test
     public void testFunction() {
         // 下发：平台 -> 设备
-//        FunctionInvokeMessage message = new FunctionInvokeMessage();
-//        message.setFunctionId("LOCK_OPEN_CMD");
-//        message.setDeviceId(deviceId);
-//        message.setMessageId("1");
-//        message.addInput("port", "5");
-//        message.addInput("type", "2");
+        FunctionInvokeMessage message = new FunctionInvokeMessage();
+        message.setFunctionId("LOCK_OPEN_CMD");
+        message.setDeviceId(deviceId);
+        message.setMessageId("1");
+        message.addInput("port", "5");
+        message.addInput("type", "2");
 //        doTest(message);
 
         // 上报：设备 -> 平台
-        FunctionInvokeMessageReply reply = new FunctionInvokeMessageReply();
-        reply.setFunctionId("LOCK_OPEN_CMD");
-        reply.setDeviceId(deviceId);
-        reply.setMessageId("1");
+//        FunctionInvokeMessageReply reply = new FunctionInvokeMessageReply();
+//        reply.setFunctionId("LOCK_OPEN_CMD");
+//        reply.setDeviceId(deviceId);
+//        reply.setMessageId("1");
         //reply.setSuccess(false);
         //reply.setCode("device offline");
         //reply.setMessage("设备已离线");
         //doTest(reply);
 
-        ByteBuf data = BinaryMessageType.write(reply, Unpooled.buffer());
+        ByteBuf data = BinaryMessageType.write(message, Unpooled.buffer());
         data.writeBytes("\r\n".getBytes());
 
         ByteBuf buf = Unpooled.buffer()
@@ -288,14 +374,56 @@ public class BinaryMessageTypeNewTest {
 
         buf.readInt();
         DeviceMessage read = BinaryMessageType.read(buf);
-        if (read instanceof FunctionInvokeMessageReply) {
-            System.out.println(read);
-        }
+        System.out.println(read);
 
     }
 
     @Test
     public void testFunctionBuild() {
+        String functionId = "LOCK_OPEN_CMD";
+        String key1 = "port";
+        String value1 = "5";
+        String key2 = "type";
+        String value2 = "2";
+
+        ByteBuf data = Unpooled
+                .buffer()
+                .writeByte(0x08) // 消息类型 FUNCTION_INVOKE_REPLY: 0x09
+                .writeLong(System.currentTimeMillis()) // 时间戳
+                .writeShort(1) // 消息id
+                .writeShort(deviceId.getBytes().length) // 设备id长度
+                .writeBytes(deviceId.getBytes())        // 设备id
+                .writeShort(0x0d) // array
+                .writeShort(functionId.getBytes().length)
+                .writeBytes(functionId.getBytes())
+                //.writeByte(0x0b) // code STRING type
+                .writeShort(key1.getBytes().length) //
+                .writeBytes(key1.getBytes())        //
+                .writeByte(0x0b)
+                .writeShort(value1.getBytes().length)
+                .writeBytes(value1.getBytes())
+                .writeShort(key2.getBytes().length)
+                .writeBytes(key2.getBytes())
+                .writeByte(0x0b)  // message STRING type
+                .writeShort(value2.getBytes().length) //
+                .writeBytes(value2.getBytes())     //
+                .writeBytes("\r\n".getBytes());     // 拆粘包分隔符
+
+        ByteBuf buf = Unpooled.buffer()
+                .writeInt(data.readableBytes()) // 消息长度
+                .writeBytes(data);              // 消息内容
+
+        System.out.println(ByteBufUtil.prettyHexDump(buf));
+        System.out.println(ByteBufUtil.hexDump(buf));
+
+        buf.readInt();
+        //System.out.println("buf after length: " + buf.readableBytes());
+        DeviceMessage read = BinaryMessageType.read(buf);
+        System.out.println(read);
+    }
+
+    @Test
+    public void testFunctionReplyBuild() {
         String functionId = "LOCK_OPEN_CMD";
         String code = "101";
         String message = "device offline";
@@ -360,7 +488,7 @@ public class BinaryMessageTypeNewTest {
      */
     @Test
     public void testMessageDecode() {
-        String hexString = "0000003909000001985fa21310000100083131313130303031000d4c4f434b5f4f50454e5f434d44000b00033130310b000b756e737570706f727465640d0a";
+        String hexString = "00000019020000019878c08553000100083131313130303031010d0a";
         //String jsonString = "{\"headers\":{\"_seq\":1},\"messageType\":\"REPORT_PROPERTY\",\"messageId\":\"1\",\"deviceId\":\"1946042226889179136\",\"properties\":{\"CHARGE_STATE\":{\"num\":6,\"state\":\"001100\"},\"LOCK_STATE\":{\"num\":6,\"state\":\"001110\"}},\"timestamp\":1753669721245}";
 
         //String hexString = "0000002102000001984EEA5F3A000100133139343630343232323638383931373931333600";

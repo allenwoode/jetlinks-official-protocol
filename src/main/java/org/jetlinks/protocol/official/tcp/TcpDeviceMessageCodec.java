@@ -60,7 +60,8 @@ public class TcpDeviceMessageCodec implements DeviceMessageCodec {
         DeviceMessage message = BinaryMessageType.read(payload, context.getDevice().getDeviceId());
         log.debug(">>>>>接收设备TCP消息: {}", message);
 
-        return Mono.justOrEmpty(message);
+        //return Mono.justOrEmpty(message);
+        return ack(message, AckCode.ok, context).thenReturn(message);
     }
 
     private Mono<DeviceMessage> handleLogin(ByteBuf payload, MessageDecodeContext context) {

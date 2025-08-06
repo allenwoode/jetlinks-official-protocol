@@ -350,7 +350,7 @@ public class BinaryMessageTypeNewTest {
         message.setDeviceId(deviceId);
         message.setMessageId("1");
         message.addInput("port", "5");
-        message.addInput("type", "2");
+        message.addInput("type", "0");
 //        doTest(message);
 
         // 上报：设备 -> 平台
@@ -384,7 +384,7 @@ public class BinaryMessageTypeNewTest {
         String key1 = "port";
         String value1 = "5";
         String key2 = "type";
-        String value2 = "2";
+        String value2 = "1";
 
         ByteBuf data = Unpooled
                 .buffer()
@@ -393,10 +393,9 @@ public class BinaryMessageTypeNewTest {
                 .writeShort(1) // 消息id
                 .writeShort(deviceId.getBytes().length) // 设备id长度
                 .writeBytes(deviceId.getBytes())        // 设备id
-                .writeShort(0x0d) // array
                 .writeShort(functionId.getBytes().length)
                 .writeBytes(functionId.getBytes())
-                //.writeByte(0x0b) // code STRING type
+                .writeShort(2) // OBJECT中字段数量
                 .writeShort(key1.getBytes().length) //
                 .writeBytes(key1.getBytes())        //
                 .writeByte(0x0b)
@@ -404,7 +403,7 @@ public class BinaryMessageTypeNewTest {
                 .writeBytes(value1.getBytes())
                 .writeShort(key2.getBytes().length)
                 .writeBytes(key2.getBytes())
-                .writeByte(0x0b)  // message STRING type
+                .writeByte(0x0b)
                 .writeShort(value2.getBytes().length) //
                 .writeBytes(value2.getBytes())     //
                 .writeBytes("\r\n".getBytes());     // 拆粘包分隔符
@@ -415,6 +414,7 @@ public class BinaryMessageTypeNewTest {
 
         System.out.println(ByteBufUtil.prettyHexDump(buf));
         System.out.println(ByteBufUtil.hexDump(buf));
+        System.out.println("0000003c08000001987e91f475000100083131313130303031000d4c4f434b5f4f50454e5f434d4400020004706f72740b0001350004747970650b0001300d0a");
 
         buf.readInt();
         //System.out.println("buf after length: " + buf.readableBytes());
@@ -425,13 +425,13 @@ public class BinaryMessageTypeNewTest {
     @Test
     public void testFunctionReplyBuild() {
         String functionId = "LOCK_OPEN_CMD";
-        String code = "101";
+        String code = "";
         String message = "device offline";
 
         ByteBuf data = Unpooled
                 .buffer()
                 .writeByte(0x09) // 消息类型 FUNCTION_INVOKE_REPLY: 0x09
-                .writeLong(System.currentTimeMillis()) // 时间戳
+                .writeLong(0) // 时间戳
                 .writeShort(1) // 消息id
                 .writeShort(deviceId.getBytes().length) // 设备id长度
                 .writeBytes(deviceId.getBytes())        // 设备id
@@ -447,7 +447,7 @@ public class BinaryMessageTypeNewTest {
                 .writeBytes("\r\n".getBytes());     // 拆粘包分隔符
 
         ByteBuf buf = Unpooled.buffer()
-                .writeInt(data.readableBytes()) // 消息长度
+                .writeInt(0) // 消息长度
                 .writeBytes(data);              // 消息内容
 
         System.out.println(ByteBufUtil.prettyHexDump(buf));
@@ -488,7 +488,7 @@ public class BinaryMessageTypeNewTest {
      */
     @Test
     public void testMessageDecode() {
-        String hexString = "00000019020000019878c08553000100083131313130303031010d0a";
+        String hexString = "0000003c08000001987e0e3e53000100083131313130303031000d4c4f434b5f4f50454e5f434d4400020004706f72740b0001340004747970650b0001310d0a";
         //String jsonString = "{\"headers\":{\"_seq\":1},\"messageType\":\"REPORT_PROPERTY\",\"messageId\":\"1\",\"deviceId\":\"1946042226889179136\",\"properties\":{\"CHARGE_STATE\":{\"num\":6,\"state\":\"001100\"},\"LOCK_STATE\":{\"num\":6,\"state\":\"001110\"}},\"timestamp\":1753669721245}";
 
         //String hexString = "0000002102000001984EEA5F3A000100133139343630343232323638383931373931333600";

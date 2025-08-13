@@ -22,14 +22,14 @@ public class BinaryFunctionInvokeMessageReply extends BinaryReplyMessage<Functio
     @Override
     protected void doReadSuccess(FunctionInvokeMessageReply msg, ByteBuf buf) {
         //msg.setFunctionId((String) DataType.readFrom(buf));
-        msg.setFunctionId((String) DataType.STRING.read(buf));
+        //msg.setFunctionId((String) DataType.STRING.read(buf));
         //msg.setOutput(DataType.readFrom(buf));
     }
 
     @Override
     protected void doWriteSuccess(FunctionInvokeMessageReply msg, ByteBuf buf) {
         //DataType.writeTo(msg.getFunctionId(), buf);
-        DataType.STRING.write(buf, msg.getFunctionId());
+        //DataType.STRING.write(buf, msg.getFunctionId());
         //DataType.writeTo(msg.getOutput(), buf);
     }
 
